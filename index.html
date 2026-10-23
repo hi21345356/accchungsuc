@@ -1,503 +1,274 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Tài Khoản - Đơn Mục</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#131f37',
-                            900: '#0f172a',
-                            950: '#080d1a',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Trình Tìm Tài Khoản</title>
     <style>
-        /* Toast animation */
-        @keyframes slideInUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        .toast-animate {
-            animation: slideInUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .container { width: 100%; max-width: 500px; }
+        .card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #334155;
+        }
+        .title { color: #38bdf8; font-size: 1.2rem; font-weight: 600; }
+        .badge {
+            background-color: #334155;
+            color: #94a3b8;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            flex: 1;
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px 14px;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+        }
+        .search-input:focus { border-color: #38bdf8; }
+        .btn {
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn:hover { background-color: #0369a1; }
+        .display-area {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .field { margin-bottom: 14px; }
+        .field-label { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+        .field-value {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #f1f5f9;
+            word-break: break-all;
+            background: #1e293b;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .copy-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .btn-copy {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-user { background-color: #3b82f6; }
+        .btn-pass { background-color: #10b981; }
+        .btn-both { background-color: #8b5cf6; grid-column: span 2; }
+        .nav-btns { display: flex; justify-content: space-between; margin-top: 15px; }
+        .btn-nav { background-color: #334155; color: #f8fafc; }
 
-        /* Pulse highlight effect on target change */
-        @keyframes cardPop {
-            0% { transform: scale(0.98); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
+        .status-msg {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            padding: 10px;
         }
-        .card-pop {
-            animation: cardPop 0.18s ease-out forwards;
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between antialiased selection:bg-sky-500 selection:text-white">
+<body>
 
-    <!-- Top Header & Import Bar -->
-    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 shrink-0">
-                    <i class="fa-solid fa-user-shield text-base"></i>
-                </div>
-                <div>
-                    <h1 class="text-sm sm:text-base font-bold text-slate-100">Account Inspector</h1>
-                    <p class="text-[11px] text-slate-400">Xem & Sao chép từng tài khoản</p>
-                </div>
-            </div>
-
-            <!-- Import Actions -->
-            <div class="flex items-center gap-2">
-                <button onclick="toggleImportModal()" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-import text-sky-400"></i>
-                    <span>Dán / Nạp File</span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content Container -->
-    <main class="max-w-xl mx-auto w-full px-4 py-6 flex-1 flex flex-col justify-center gap-6">
-
-        <!-- Top Navigator Controls -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-            <form onsubmit="jumpToSTT(event)" class="flex items-center gap-2">
-                <div class="relative flex-1">
-                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-sky-400 font-bold text-sm">#</span>
-                    <input type="number" id="sttInput" min="1" placeholder="Nhập STT (VD: 1, 9999)..."
-                        class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 font-mono focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none placeholder:text-slate-600">
-                </div>
-                <button type="submit" class="bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 flex items-center gap-1.5 shrink-0">
-                    <i class="fa-solid fa-location-arrow"></i>
-                    <span>Đến STT</span>
-                </button>
-            </form>
-
-            <!-- Navigation Buttons -->
-            <div class="grid grid-cols-2 gap-3 mt-3">
-                <button onclick="prevAccount()" id="btnPrev" disabled
-                    class="bg-slate-800 hover:bg-slate-700 active:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/80 text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-arrow-left"></i>
-                    <span>Tài khoản trước</span>
-                </button>
-
-                <button onclick="nextAccount()" id="btnNext" disabled
-                    class="bg-slate-800 hover:bg-slate-700 active:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/80 text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2">
-                    <span>Tài khoản tiếp</span>
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-            </div>
+<div class="container">
+    <div class="card">
+        <div class="header">
+            <span class="title">Tài Khoản Chi Tiết</span>
+            <span class="badge" id="accIndex">STT: 0/0</span>
         </div>
 
-        <!-- MAIN ACCOUNT CARD (Displays Only ONE Account) -->
-        <div id="accountCard" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden transition-all">
-            
-            <!-- Card Header Status -->
-            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-                <div class="flex items-center gap-2">
-                    <span id="sttBadge" class="bg-sky-500/10 border border-sky-500/30 text-sky-400 font-mono font-bold text-xs px-3 py-1 rounded-full">
-                        #0
-                    </span>
-                    <span class="text-xs text-slate-500">STT Đang Chọn</span>
-                </div>
-                <div id="totalBadge" class="text-xs font-mono text-slate-400">
-                    Tổng: <span class="text-slate-200 font-bold">0</span> account
-                </div>
-            </div>
-
-            <!-- Single Account Main Display -->
-            <div id="cardContent" class="py-6 space-y-5">
-
-                <!-- USERNAME FIELD -->
-                <div>
-                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
-                        <span><i class="fa-solid fa-user text-sky-400 mr-1.5"></i>Tài khoản (Username)</span>
-                    </label>
-                    <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
-                        <input type="text" id="displayUser" readonly value="Chưa có dữ liệu"
-                            class="w-full bg-transparent text-slate-100 font-mono text-sm sm:text-base px-2 outline-none select-all font-semibold">
-                        <button onclick="copyCurrent('user')" id="btnCopyUser" disabled
-                            class="bg-sky-600 hover:bg-sky-500 active:bg-sky-700 disabled:opacity-40 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition shrink-0 flex items-center gap-1.5">
-                            <i class="fa-regular fa-copy"></i>
-                            <span>Copy</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- PASSWORD FIELD -->
-                <div>
-                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
-                        <span><i class="fa-solid fa-key text-emerald-400 mr-1.5"></i>Mật khẩu (Password)</span>
-                    </label>
-                    <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
-                        <input type="text" id="displayPass" readonly value="Chưa có dữ liệu"
-                            class="w-full bg-transparent text-slate-100 font-mono text-sm sm:text-base px-2 outline-none select-all font-semibold">
-                        <button onclick="copyCurrent('pass')" id="btnCopyPass" disabled
-                            class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition shrink-0 flex items-center gap-1.5">
-                            <i class="fa-regular fa-copy"></i>
-                            <span>Copy</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- COPY BOTH BUTTON -->
-                <div class="pt-2">
-                    <button onclick="copyCurrent('both')" id="btnCopyBoth" disabled
-                        class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-40 text-white font-semibold text-xs py-3 rounded-xl transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-paste"></i>
-                        <span>Sao chép Cả Hai (user|pass)</span>
-                    </button>
-                </div>
-
-            </div>
-
-            <!-- Empty State Overlay if no accounts loaded -->
-            <div id="emptyOverlay" class="absolute inset-0 bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
-                <div class="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 text-2xl mb-3">
-                    <i class="fa-solid fa-folder-open"></i>
-                </div>
-                <h3 class="text-sm font-bold text-slate-200 mb-1">Chưa có dữ liệu tài khoản</h3>
-                <p class="text-xs text-slate-400 max-w-xs mb-4">Bấm nút bên dưới để dán văn bản hoặc nạp file .txt danh sách của bạn.</p>
-                <button onclick="toggleImportModal()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20">
-                    + Nhập danh sách tài khoản
-                </button>
-            </div>
-
+        <div class="search-box">
+            <input type="number" id="gotoStt" class="search-input" placeholder="Nhập STT (vd: 9999)..." min="1">
+            <button class="btn" onclick="jumpToStt()">Tìm</button>
         </div>
 
-    </main>
+        <div id="loadingArea" class="status-msg">Đang tự động tải dữ liệu từ acc.txt...</div>
 
-    <!-- Footer Status -->
-    <footer class="py-4 text-center text-xs text-slate-500 border-t border-slate-900">
-        Hiển thị tối giản 1 tài khoản • Dùng phím phím mũi tên hoặc nút điều hướng
-    </footer>
-
-    <!-- Modal Import Data -->
-    <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl relative">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <i class="fa-solid fa-database text-sky-400"></i> Nhập / Dán Danh Sách
-                </h3>
-                <button onclick="toggleImportModal()" class="text-slate-400 hover:text-slate-200 text-base">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+        <div id="contentArea" class="hidden">
+            <div class="display-area">
+                <div class="field">
+                    <div class="field-label">Tài khoản (Username)</div>
+                    <div class="field-value" id="userVal">---</div>
+                </div>
+                <div class="field">
+                    <div class="field-label">Mật khẩu (Password)</div>
+                    <div class="field-value" id="passVal">---</div>
+                </div>
             </div>
 
-            <textarea id="rawInput" rows="7" 
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono focus:ring-2 focus:ring-sky-500 outline-none transition resize-none placeholder:text-slate-600 mb-4"
-                placeholder="Dán danh sách vào đây...&#10;user1|pass1&#10;user2:pass2&#10;user3 pass3"></textarea>
+            <div class="copy-group">
+                <button class="btn-copy btn-user" onclick="copy('user')">Copy User</button>
+                <button class="btn-copy btn-pass" onclick="copy('pass')">Copy Pass</button>
+                <button class="btn-copy btn-both" onclick="copy('both')">Copy Cả 2 (User|Pass)</button>
+            </div>
 
-            <div class="flex items-center justify-between gap-2">
-                <label for="fileInput" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-folder-open text-amber-400"></i> Nạp File .TXT
-                </label>
-                <input type="file" id="fileInput" accept=".txt" class="hidden">
-
-                <div class="flex items-center gap-2">
-                    <button onclick="clearData()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium px-3 py-2.5 rounded-xl transition">
-                        Xóa
-                    </button>
-                    <button onclick="processData()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20">
-                        Áp Dụng
-                    </button>
-                </div>
+            <div class="nav-btns">
+                <button class="btn btn-nav" onclick="navigate(-1)">← Trước</button>
+                <button class="btn btn-nav" onclick="navigate(1)">Tiếp →</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden">
-        <div class="bg-slate-800 border border-slate-700 text-slate-100 shadow-2xl rounded-xl px-4 py-3 flex items-center gap-3 toast-animate">
-            <div id="toastIcon" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            <div>
-                <p id="toastTitle" class="text-xs font-semibold text-slate-200">Thông báo</p>
-                <p id="toastMsg" class="text-xs text-slate-400 font-mono mt-0.5"></p>
-            </div>
-        </div>
-    </div>
+<div class="toast" id="toast">Đã sao chép!</div>
 
-    <!-- Application Script -->
-    <script>
-        // Data State
-        let accounts = [];
-        let currentIndex = -1; // 0-based index
+<script>
+    let accounts = [];
+    let currentIndex = 0;
 
-        // DOM Element Cache
-        const rawInput = document.getElementById('rawInput');
-        const fileInput = document.getElementById('fileInput');
-        const sttInput = document.getElementById('sttInput');
-        const displayUser = document.getElementById('displayUser');
-        const displayPass = document.getElementById('displayPass');
-        const sttBadge = document.getElementById('sttBadge');
-        const totalBadge = document.getElementById('totalBadge');
-        const emptyOverlay = document.getElementById('emptyOverlay');
-        const accountCard = document.getElementById('accountCard');
-        const btnPrev = document.getElementById('btnPrev');
-        const btnNext = document.getElementById('btnNext');
-        const btnCopyUser = document.getElementById('btnCopyUser');
-        const btnCopyPass = document.getElementById('btnCopyPass');
-        const btnCopyBoth = document.getElementById('btnCopyBoth');
-        const importModal = document.getElementById('importModal');
-
-        // File listener
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                rawInput.value = evt.target.result;
-                processData();
-                showToast('Thành công', `Đã đọc file "${file.name}"`, 'success');
-            };
-            reader.readAsText(file);
-        });
-
-        // Toggle Modal
-        function toggleImportModal() {
-            importModal.classList.toggle('hidden');
-        }
-
-        // Process Text/File Input
-        function processData() {
-            const text = rawInput.value.trim();
-            accounts = [];
-
-            if (!text) {
-                currentIndex = -1;
-                renderAccount();
-                importModal.classList.add('hidden');
-                return;
-            }
-
-            const lines = text.split(/\r?\n/);
-
-            lines.forEach((line) => {
-                const trimmed = line.trim();
-                if (!trimmed) return;
-
-                let parts = trimmed.split(/[|:\t]/);
-                if (parts.length === 1) {
-                    parts = trimmed.split(/\s+/);
-                }
-
-                const user = parts[0] ? parts[0].trim() : '';
-                const pass = parts[1] ? parts[1].trim() : '';
-
-                if (user) {
-                    accounts.push({ user, pass });
-                }
+    // Tự động tải file acc.txt cùng thư mục khi trang chạy
+    window.addEventListener('DOMContentLoaded', () => {
+        fetch('acc.txt')
+            .then(response => {
+                if (!response.ok) throw new Error('Không tìm thấy file acc.txt');
+                return response.text();
+            })
+            .then(text => {
+                parseData(text);
+            })
+            .catch(err => {
+                document.getElementById('loadingArea').innerHTML = `
+                    <span style="color:#ef4444">Không tìm thấy file <b>acc.txt</b> tự động.</span><br><br>
+                    <input type="file" id="manualFile" accept=".txt" onchange="loadManualFile(event)">
+                `;
             });
+    });
 
-            if (accounts.length > 0) {
-                currentIndex = 0;
-            } else {
-                currentIndex = -1;
-            }
+    function loadManualFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => parseData(e.target.result);
+        reader.readAsText(file);
+    }
 
-            renderAccount();
-            importModal.classList.add('hidden');
-            if (accounts.length > 0) {
-                showToast('Đã tải dữ liệu', `Tìm thấy ${accounts.length} tài khoản`, 'success');
-            }
-        }
+    function parseData(text) {
+        const lines = text.split('\n');
+        accounts = [];
 
-        // Render current selected account
-        function renderAccount() {
-            const total = accounts.length;
-            totalBadge.querySelector('span').textContent = total;
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
 
-            if (total === 0 || currentIndex < 0 || currentIndex >= total) {
-                emptyOverlay.classList.remove('hidden');
-                displayUser.value = "Chưa có dữ liệu";
-                displayPass.value = "Chưa có dữ liệu";
-                sttBadge.textContent = "#0";
-                sttInput.value = "";
-                
-                btnPrev.disabled = true;
-                btnNext.disabled = true;
-                btnCopyUser.disabled = true;
-                btnCopyPass.disabled = true;
-                btnCopyBoth.disabled = true;
-                return;
-            }
+            let parts = trimmed.split(/[|:\t]/);
+            if (parts.length === 1) parts = trimmed.split(/\s+/);
 
-            emptyOverlay.classList.add('hidden');
+            const user = parts[0] ? parts[0].trim() : '';
+            const pass = parts[1] ? parts[1].trim() : '';
 
-            const current = accounts[currentIndex];
-            const sttNumber = currentIndex + 1;
-
-            displayUser.value = current.user;
-            displayPass.value = current.pass || "(Không có mật khẩu)";
-
-            sttBadge.textContent = `#${sttNumber}`;
-            sttInput.value = sttNumber;
-
-            btnPrev.disabled = currentIndex === 0;
-            btnNext.disabled = currentIndex === total - 1;
-
-            btnCopyUser.disabled = false;
-            btnCopyPass.disabled = !current.pass;
-            btnCopyBoth.disabled = !current.pass;
-
-            // Trigger visual pulse
-            accountCard.classList.remove('card-pop');
-            void accountCard.offsetWidth; // Force reflow
-            accountCard.classList.add('card-pop');
-        }
-
-        // Jump to target STT
-        function jumpToSTT(e) {
-            e.preventDefault();
-            const val = parseInt(sttInput.value, 10);
-
-            if (isNaN(val) || val < 1) {
-                showToast('Cảnh báo', 'Vui lòng nhập số thứ tự lớn hơn 0!', 'warning');
-                return;
-            }
-
-            if (accounts.length === 0) {
-                showToast('Thông báo', 'Danh sách tài khoản đang trống!', 'warning');
-                return;
-            }
-
-            if (val > accounts.length) {
-                showToast('Không tồn tại', `Chỉ có tối đa ${accounts.length} tài khoản!`, 'error');
-                return;
-            }
-
-            currentIndex = val - 1;
-            renderAccount();
-            showToast('Đã chuyển', `Đang hiển thị tài khoản STT #${val}`, 'info');
-        }
-
-        // Prev/Next Navigation
-        function prevAccount() {
-            if (currentIndex > 0) {
-                currentIndex--;
-                renderAccount();
-            }
-        }
-
-        function nextAccount() {
-            if (currentIndex < accounts.length - 1) {
-                currentIndex++;
-                renderAccount();
-            }
-        }
-
-        // Copy Handler
-        function copyCurrent(type) {
-            if (currentIndex < 0 || currentIndex >= accounts.length) return;
-
-            const current = accounts[currentIndex];
-            let textToCopy = "";
-            let label = "";
-
-            if (type === 'user') {
-                textToCopy = current.user;
-                label = `Tài khoản STT #${currentIndex + 1}`;
-            } else if (type === 'pass') {
-                textToCopy = current.pass;
-                label = `Mật khẩu STT #${currentIndex + 1}`;
-            } else if (type === 'both') {
-                textToCopy = `${current.user}|${current.pass}`;
-                label = `Cả Acc & Pass STT #${currentIndex + 1}`;
-            }
-
-            if (!textToCopy) return;
-
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    showToast('Đã sao chép', `${label}`, 'success');
-                }).catch(() => fallbackCopy(textToCopy, label));
-            } else {
-                fallbackCopy(textToCopy, label);
-            }
-        }
-
-        function fallbackCopy(text, label) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.opacity = '0';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                showToast('Đã sao chép', `${label}`, 'success');
-            } catch (err) {
-                showToast('Lỗi', 'Không thể sao chép!', 'error');
-            }
-            document.body.removeChild(textArea);
-        }
-
-        // Clear All
-        function clearData() {
-            rawInput.value = '';
-            fileInput.value = '';
-            accounts = [];
-            currentIndex = -1;
-            renderAccount();
-            importModal.classList.add('hidden');
-            showToast('Đã xóa', 'Dữ liệu đã được dọn sạch', 'info');
-        }
-
-        // Toast Notification Manager
-        let toastTimeout;
-        function showToast(title, message, type = 'success') {
-            clearTimeout(toastTimeout);
-            document.getElementById('toastTitle').textContent = title;
-            document.getElementById('toastMsg').textContent = message;
-
-            const toastIcon = document.getElementById('toastIcon');
-            if (type === 'success') {
-                toastIcon.className = 'w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0';
-                toastIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
-            } else if (type === 'error' || type === 'warning') {
-                toastIcon.className = 'w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0';
-                toastIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            } else {
-                toastIcon.className = 'w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm shrink-0';
-                toastIcon.innerHTML = '<i class="fa-solid fa-info"></i>';
-            }
-
-            toast.classList.remove('hidden');
-
-            toastTimeout = setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 2000);
-        }
-
-        // Keyboard Shortcuts (Arrow Left / Right to Navigate)
-        document.addEventListener('keydown', (e) => {
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
-                return; // Don't trigger if user is typing
-            }
-
-            if (e.key === 'ArrowLeft') {
-                prevAccount();
-            } else if (e.key === 'ArrowRight') {
-                nextAccount();
+            if (user) {
+                accounts.push({ user, pass });
             }
         });
-    </script>
+
+        if (accounts.length > 0) {
+            document.getElementById('loadingArea').classList.add('hidden');
+            document.getElementById('contentArea').classList.remove('hidden');
+            showAccount(0);
+        } else {
+            document.getElementById('loadingArea').innerHTML = 'File acc.txt rỗng hoặc sai định dạng!';
+        }
+    }
+
+    function showAccount(index) {
+        if (accounts.length === 0) return;
+        if (index < 0) index = 0;
+        if (index >= accounts.length) index = accounts.length - 1;
+
+        currentIndex = index;
+        const acc = accounts[currentIndex];
+
+        document.getElementById('userVal').textContent = acc.user || '(Không có)';
+        document.getElementById('passVal').textContent = acc.pass || '(Không có)';
+        document.getElementById('accIndex').textContent = `STT: ${currentIndex + 1}/${accounts.length}`;
+        document.getElementById('gotoStt').value = currentIndex + 1;
+    }
+
+    function jumpToStt() {
+        const stt = parseInt(document.getElementById('gotoStt').value);
+        if (!isNaN(stt) && stt >= 1) {
+            showAccount(stt - 1);
+        }
+    }
+
+    function navigate(direction) {
+        showAccount(currentIndex + direction);
+    }
+
+    function copy(type) {
+        const acc = accounts[currentIndex];
+        if (!acc) return;
+
+        let textToCopy = '';
+        if (type === 'user') textToCopy = acc.user;
+        else if (type === 'pass') textToCopy = acc.pass;
+        else if (type === 'both') textToCopy = `${acc.user}|${acc.pass}`;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const toast = document.getElementById('toast');
+            toast.textContent = 'Đã sao chép: ' + textToCopy;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 1500);
+        });
+    }
+
+    // Nhấn Enter ở ô nhập để tìm luôn
+    document.getElementById('gotoStt').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') jumpToStt();
+    });
+</script>
+
 </body>
 </html>
