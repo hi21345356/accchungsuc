@@ -1,472 +1,503 @@
 <!DOCTYPE html>
-<html lang="vi" class="h-full bg-slate-900 text-slate-100">
+<html lang="vi" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Tra Cứu & Lọc Tài Khoản (Account Log Inspector)</title>
+    <title>Quản Lý Tài Khoản - Đơn Mục</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
                     colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
+                        slate: {
+                            850: '#131f37',
+                            900: '#0f172a',
+                            950: '#080d1a',
                         }
                     }
                 }
             }
         }
     </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Custom scrollbar for better aesthetics */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        /* Toast animation */
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
+        .toast-animate {
+            animation: slideInUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
+
+        /* Pulse highlight effect on target change */
+        @keyframes cardPop {
+            0% { transform: scale(0.98); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+        .card-pop {
+            animation: cardPop 0.18s ease-out forwards;
         }
     </style>
 </head>
-<body class="h-full flex flex-col font-sans antialiased bg-slate-900 text-slate-100">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between antialiased selection:bg-sky-500 selection:text-white">
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-xl flex items-center gap-3 z-50 pointer-events-none">
-        <i class="fa-solid fa-circle-check text-lg"></i>
-        <span id="toast-message" class="font-medium text-sm">Đã sao chép vào bộ nhớ tạm!</span>
-    </div>
-
-    <!-- Header Section -->
-    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="p-2.5 bg-brand-600/20 text-brand-500 rounded-xl border border-brand-500/30">
-                    <i class="fa-solid fa-users-gear text-2xl"></i>
+    <!-- Top Header & Import Bar -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 shrink-0">
+                    <i class="fa-solid fa-user-shield text-base"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                        Account Log Filter & Search
-                    </h1>
-                    <p class="text-xs text-slate-400">Công cụ kiểm tra, tra cứu và lọc dữ liệu log tài khoản nhanh chóng</p>
+                    <h1 class="text-sm sm:text-base font-bold text-slate-100">Account Inspector</h1>
+                    <p class="text-[11px] text-slate-400">Xem & Sao chép từng tài khoản</p>
                 </div>
             </div>
-            
-            <!-- Quick Actions -->
+
+            <!-- Import Actions -->
             <div class="flex items-center gap-2">
-                <button onclick="clearData()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700 flex items-center gap-2">
-                    <i class="fa-solid fa-trash-can"></i> Xóa dữ liệu
-                </button>
-                <button onclick="loadSampleData()" class="px-3 py-1.5 text-xs font-medium bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 rounded-lg transition border border-brand-500/30 flex items-center gap-2">
-                    <i class="fa-solid fa-vial"></i> Nạp dữ liệu mẫu
+                <button onclick="toggleImportModal()" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import text-sky-400"></i>
+                    <span>Dán / Nạp File</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+    <!-- Main Content Container -->
+    <main class="max-w-xl mx-auto w-full px-4 py-6 flex-1 flex flex-col justify-center gap-6">
 
-        <!-- Input Section -->
-        <section class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 shadow-lg backdrop-blur">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-                <label for="logInput" class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                    <i class="fa-solid fa-paste text-brand-500"></i> Dán nội dung Log Tài Khoản vào đây:
-                </label>
-                <div class="flex items-center gap-3 w-full sm:w-auto">
-                    <!-- File Upload Button -->
-                    <label class="cursor-pointer text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-2">
-                        <i class="fa-solid fa-file-import"></i> Nhập từ File (.txt)
-                        <input type="file" id="fileInput" accept=".txt,.log" class="hidden" onchange="handleFileUpload(event)">
+        <!-- Top Navigator Controls -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+            <form onsubmit="jumpToSTT(event)" class="flex items-center gap-2">
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-sky-400 font-bold text-sm">#</span>
+                    <input type="number" id="sttInput" min="1" placeholder="Nhập STT (VD: 1, 9999)..."
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 font-mono focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none placeholder:text-slate-600">
+                </div>
+                <button type="submit" class="bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20 flex items-center gap-1.5 shrink-0">
+                    <i class="fa-solid fa-location-arrow"></i>
+                    <span>Đến STT</span>
+                </button>
+            </form>
+
+            <!-- Navigation Buttons -->
+            <div class="grid grid-cols-2 gap-3 mt-3">
+                <button onclick="prevAccount()" id="btnPrev" disabled
+                    class="bg-slate-800 hover:bg-slate-700 active:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/80 text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Tài khoản trước</span>
+                </button>
+
+                <button onclick="nextAccount()" id="btnNext" disabled
+                    class="bg-slate-800 hover:bg-slate-700 active:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/80 text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <span>Tài khoản tiếp</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN ACCOUNT CARD (Displays Only ONE Account) -->
+        <div id="accountCard" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden transition-all">
+            
+            <!-- Card Header Status -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span id="sttBadge" class="bg-sky-500/10 border border-sky-500/30 text-sky-400 font-mono font-bold text-xs px-3 py-1 rounded-full">
+                        #0
+                    </span>
+                    <span class="text-xs text-slate-500">STT Đang Chọn</span>
+                </div>
+                <div id="totalBadge" class="text-xs font-mono text-slate-400">
+                    Tổng: <span class="text-slate-200 font-bold">0</span> account
+                </div>
+            </div>
+
+            <!-- Single Account Main Display -->
+            <div id="cardContent" class="py-6 space-y-5">
+
+                <!-- USERNAME FIELD -->
+                <div>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
+                        <span><i class="fa-solid fa-user text-sky-400 mr-1.5"></i>Tài khoản (Username)</span>
                     </label>
-                    <button onclick="parseLogs()" class="text-xs bg-brand-600 hover:bg-brand-500 text-white font-semibold px-4 py-1.5 rounded-lg transition shadow-lg shadow-brand-600/20 flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> Xử lý Log
+                    <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <input type="text" id="displayUser" readonly value="Chưa có dữ liệu"
+                            class="w-full bg-transparent text-slate-100 font-mono text-sm sm:text-base px-2 outline-none select-all font-semibold">
+                        <button onclick="copyCurrent('user')" id="btnCopyUser" disabled
+                            class="bg-sky-600 hover:bg-sky-500 active:bg-sky-700 disabled:opacity-40 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition shrink-0 flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PASSWORD FIELD -->
+                <div>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center justify-between">
+                        <span><i class="fa-solid fa-key text-emerald-400 mr-1.5"></i>Mật khẩu (Password)</span>
+                    </label>
+                    <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+                        <input type="text" id="displayPass" readonly value="Chưa có dữ liệu"
+                            class="w-full bg-transparent text-slate-100 font-mono text-sm sm:text-base px-2 outline-none select-all font-semibold">
+                        <button onclick="copyCurrent('pass')" id="btnCopyPass" disabled
+                            class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition shrink-0 flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- COPY BOTH BUTTON -->
+                <div class="pt-2">
+                    <button onclick="copyCurrent('both')" id="btnCopyBoth" disabled
+                        class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-40 text-white font-semibold text-xs py-3 rounded-xl transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paste"></i>
+                        <span>Sao chép Cả Hai (user|pass)</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Empty State Overlay if no accounts loaded -->
+            <div id="emptyOverlay" class="absolute inset-0 bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
+                <div class="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 text-2xl mb-3">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h3 class="text-sm font-bold text-slate-200 mb-1">Chưa có dữ liệu tài khoản</h3>
+                <p class="text-xs text-slate-400 max-w-xs mb-4">Bấm nút bên dưới để dán văn bản hoặc nạp file .txt danh sách của bạn.</p>
+                <button onclick="toggleImportModal()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20">
+                    + Nhập danh sách tài khoản
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer Status -->
+    <footer class="py-4 text-center text-xs text-slate-500 border-t border-slate-900">
+        Hiển thị tối giản 1 tài khoản • Dùng phím phím mũi tên hoặc nút điều hướng
+    </footer>
+
+    <!-- Modal Import Data -->
+    <div id="importModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl relative">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-sky-400"></i> Nhập / Dán Danh Sách
+                </h3>
+                <button onclick="toggleImportModal()" class="text-slate-400 hover:text-slate-200 text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <textarea id="rawInput" rows="7" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono focus:ring-2 focus:ring-sky-500 outline-none transition resize-none placeholder:text-slate-600 mb-4"
+                placeholder="Dán danh sách vào đây...&#10;user1|pass1&#10;user2:pass2&#10;user3 pass3"></textarea>
+
+            <div class="flex items-center justify-between gap-2">
+                <label for="fileInput" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-open text-amber-400"></i> Nạp File .TXT
+                </label>
+                <input type="file" id="fileInput" accept=".txt" class="hidden">
+
+                <div class="flex items-center gap-2">
+                    <button onclick="clearData()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-medium px-3 py-2.5 rounded-xl transition">
+                        Xóa
+                    </button>
+                    <button onclick="processData()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-sky-600/20">
+                        Áp Dụng
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <textarea 
-                id="logInput" 
-                rows="5" 
-                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition resize-y placeholder-slate-600"
-                placeholder="Dán dữ liệu log dạng: ID: 9581-FINAL | Pass: ... | Ban: No | Mail: ..."></textarea>
-        </section>
-
-        <!-- Stats Overview Cards -->
-        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
-                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
-                    <i class="fa-solid fa-list-check text-xl"></i>
-                </div>
-                <div>
-                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Tổng số Tài khoản</span>
-                    <h3 id="statTotal" class="text-2xl font-bold text-slate-100">0</h3>
-                </div>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 text-slate-100 shadow-2xl rounded-xl px-4 py-3 flex items-center gap-3 toast-animate">
+            <div id="toastIcon" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                <i class="fa-solid fa-check"></i>
             </div>
-
-            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
-                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                    <i class="fa-solid fa-user-check text-xl"></i>
-                </div>
-                <div>
-                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Hoạt động (Active)</span>
-                    <h3 id="statActive" class="text-2xl font-bold text-emerald-400">0</h3>
-                </div>
+            <div>
+                <p id="toastTitle" class="text-xs font-semibold text-slate-200">Thông báo</p>
+                <p id="toastMsg" class="text-xs text-slate-400 font-mono mt-0.5"></p>
             </div>
+        </div>
+    </div>
 
-            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
-                <div class="p-3 bg-rose-500/10 text-rose-400 rounded-lg">
-                    <i class="fa-solid fa-user-slash text-xl"></i>
-                </div>
-                <div>
-                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Bị Khóa (Banned)</span>
-                    <h3 id="statBanned" class="text-2xl font-bold text-rose-400">0</h3>
-                </div>
-            </div>
-        </section>
-
-        <!-- Search & Quick Filters Bar -->
-        <section class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
-            
-            <!-- Filter Tabs -->
-            <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 w-full md:w-auto">
-                <button onclick="setFilter('all')" id="btnFilterAll" class="filter-btn active-tab px-4 py-2 text-xs font-semibold rounded-lg transition flex-1 md:flex-none flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-globe"></i> Tất cả
-                </button>
-                <button onclick="setFilter('banned')" id="btnFilterBanned" class="filter-btn text-slate-400 hover:text-slate-200 px-4 py-2 text-xs font-semibold rounded-lg transition flex-1 md:flex-none flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-ban text-rose-400"></i> Bị BAN (Ban: Yes)
-                </button>
-                <button onclick="setFilter('active')" id="btnFilterActive" class="filter-btn text-slate-400 hover:text-slate-200 px-4 py-2 text-xs font-semibold rounded-lg transition flex-1 md:flex-none flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-circle-check text-emerald-400"></i> Hoạt động (Ban: No)
-                </button>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="relative w-full md:w-80">
-                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    oninput="handleSearch()"
-                    placeholder="Tìm theo Mã ID, Tên, Mail, Keyword..." 
-                    class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-10 pr-9 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition">
-                <button onclick="clearSearch()" id="btnClearSearch" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-        </section>
-
-        <!-- Results Table Section -->
-        <section class="flex-1 bg-slate-800/60 border border-slate-700/60 rounded-2xl shadow-lg overflow-hidden flex flex-col">
-            <div class="overflow-x-auto flex-1">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-900/80 border-b border-slate-700/80 sticky top-0 z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        <tr>
-                            <th class="py-3 px-4 w-12 text-center">STT</th>
-                            <th class="py-3 px-4">Tài Khoản / ID</th>
-                            <th class="py-3 px-4">Trạng Thái BAN</th>
-                            <th class="py-3 px-4">Mật khẩu / 2FA</th>
-                            <th class="py-3 px-4">Email / Thông tin thêm</th>
-                            <th class="py-3 px-4 text-center w-28">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody id="accountTableBody" class="divide-y divide-slate-700/50 text-xs font-mono text-slate-300">
-                        <!-- Table rows will be dynamically generated -->
-                    </tbody>
-                </table>
-
-                <!-- Empty State -->
-                <div id="emptyState" class="py-16 text-center flex flex-col items-center justify-center text-slate-500">
-                    <i class="fa-solid fa-folder-open text-4xl mb-3 opacity-40"></i>
-                    <p class="text-sm font-medium">Chưa có dữ liệu tài khoản nào.</p>
-                    <p class="text-xs text-slate-600 mt-1">Dán log vào ô phía trên hoặc chọn "Nạp dữ liệu mẫu".</p>
-                </div>
-            </div>
-
-            <!-- Table Footer -->
-            <div class="bg-slate-900/60 border-t border-slate-700/60 px-4 py-3 flex justify-between items-center text-xs text-slate-400">
-                <span id="showingCount">Hiển thị 0 / 0 tài khoản</span>
-                <span class="text-slate-500 italic">Mẹo: Click nút sao chép để lấy nội dung dòng</span>
-            </div>
-        </section>
-    </main>
-
-    <!-- Style overrides for custom tab toggle -->
-    <style>
-        .active-tab {
-            background-color: #0284c7 !important;
-            color: #ffffff !important;
-            box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3);
-        }
-    </style>
-
-    <!-- JavaScript Application Logic -->
+    <!-- Application Script -->
     <script>
-        // Global State Variables
-        let parsedAccounts = [];
-        let currentFilter = 'all'; // 'all', 'banned', 'active'
-        let searchQuery = '';
+        // Data State
+        let accounts = [];
+        let currentIndex = -1; // 0-based index
 
-        // Sample Data for quick testing
-        const sampleLogs = `Mã: 9581-FINAL | ID: User_Alpha | Pass: Pass123! | 2FA: JBSWY3DPEHPK3PXP | Ban: No | Mail: alpha@gmail.com
-Mã: 9582-FINAL | ID: User_Beta | Pass: BetaPass456 | 2FA: K4SWY3DPEHPK3PXP | Ban: Yes | Mail: beta@outlook.com | Reason: Spam
-Mã: 9583-FINAL | ID: User_Gamma | Pass: GammaPass789 | 2FA: L5SWY3DPEHPK3PXP | Ban: No | Mail: gamma@yahoo.com
-Mã: 9584-FINAL | ID: User_Delta | Pass: DeltaPass321 | 2FA: M6SWY3DPEHPK3PXP | Ban: Yes | Mail: delta@gmail.com
-Mã: 9585-FINAL | ID: User_Epsilon | Pass: EpsPass654 | 2FA: N7SWY3DPEHPK3PXP | Ban: No | Mail: epsilon@domain.com`;
+        // DOM Element Cache
+        const rawInput = document.getElementById('rawInput');
+        const fileInput = document.getElementById('fileInput');
+        const sttInput = document.getElementById('sttInput');
+        const displayUser = document.getElementById('displayUser');
+        const displayPass = document.getElementById('displayPass');
+        const sttBadge = document.getElementById('sttBadge');
+        const totalBadge = document.getElementById('totalBadge');
+        const emptyOverlay = document.getElementById('emptyOverlay');
+        const accountCard = document.getElementById('accountCard');
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        const btnCopyUser = document.getElementById('btnCopyUser');
+        const btnCopyPass = document.getElementById('btnCopyPass');
+        const btnCopyBoth = document.getElementById('btnCopyBoth');
+        const importModal = document.getElementById('importModal');
 
-        // Initialize App
-        window.addEventListener('DOMContentLoaded', () => {
-            loadSampleData();
-        });
-
-        // Load sample data into textarea and parse
-        function loadSampleData() {
-            document.getElementById('logInput').value = sampleLogs;
-            parseLogs();
-        }
-
-        // Clear input and state
-        function clearData() {
-            document.getElementById('logInput').value = '';
-            parsedAccounts = [];
-            renderTable();
-            updateStats();
-        }
-
-        // Handle file import (.txt)
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
+        // File listener
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('logInput').value = e.target.result;
-                parseLogs();
+            reader.onload = (evt) => {
+                rawInput.value = evt.target.result;
+                processData();
+                showToast('Thành công', `Đã đọc file "${file.name}"`, 'success');
             };
             reader.readAsText(file);
+        });
+
+        // Toggle Modal
+        function toggleImportModal() {
+            importModal.classList.toggle('hidden');
         }
 
-        // Parse Raw Text into Structured Data
-        function parseLogs() {
-            const text = document.getElementById('logInput').value;
-            const lines = text.split('\n');
-            parsedAccounts = [];
+        // Process Text/File Input
+        function processData() {
+            const text = rawInput.value.trim();
+            accounts = [];
 
-            lines.forEach((line, index) => {
+            if (!text) {
+                currentIndex = -1;
+                renderAccount();
+                importModal.classList.add('hidden');
+                return;
+            }
+
+            const lines = text.split(/\r?\n/);
+
+            lines.forEach((line) => {
                 const trimmed = line.trim();
                 if (!trimmed) return;
 
-                // Extract Ban status carefully
-                const isBanned = /ban:\s*yes/i.test(trimmed);
-                
-                // Parse Key-Value Pairs if possible, or keep raw string
-                const idMatch = trimmed.match(/(?:ID|Mã|Acc|Account|User)[:\s]*([^\s|]+)/i);
-                const passMatch = trimmed.match(/(?:Pass|Password|Mật khẩu)[:\s]*([^\s|]+)/i);
-                const faMatch = trimmed.match(/(?:2FA|TwoFA|Code)[:\s]*([^\s|]+)/i);
-                const mailMatch = trimmed.match(/(?:Mail|Email)[:\s]*([^\s|]+)/i);
-
-                parsedAccounts.push({
-                    index: index + 1,
-                    raw: trimmed,
-                    isBanned: isBanned,
-                    id: idMatch ? idMatch[1] : (trimmed.split('|')[0] || `Line ${index + 1}`),
-                    pass: passMatch ? passMatch[1] : '',
-                    twoFA: faMatch ? faMatch[1] : '',
-                    mail: mailMatch ? mailMatch[1] : ''
-                });
-            });
-
-            updateStats();
-            renderTable();
-        }
-
-        // Calculate & Update Stats Overview
-        function updateStats() {
-            const total = parsedAccounts.length;
-            const banned = parsedAccounts.filter(a => a.isBanned).length;
-            const active = total - banned;
-
-            document.getElementById('statTotal').innerText = total;
-            document.getElementById('statBanned').innerText = banned;
-            document.getElementById('statActive').innerText = active;
-        }
-
-        // Filter Handlers
-        function setFilter(type) {
-            currentFilter = type;
-            
-            // Update Tab UI Styles
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active-tab'));
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.add('text-slate-400'));
-
-            if (type === 'all') {
-                document.getElementById('btnFilterAll').classList.add('active-tab');
-            } else if (type === 'banned') {
-                document.getElementById('btnFilterBanned').classList.add('active-tab');
-            } else if (type === 'active') {
-                document.getElementById('btnFilterActive').classList.add('active-tab');
-            }
-
-            renderTable();
-        }
-
-        // Search Input Handler
-        function handleSearch() {
-            searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
-            const clearBtn = document.getElementById('btnClearSearch');
-            
-            if (searchQuery) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-            }
-
-            renderTable();
-        }
-
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            handleSearch();
-        }
-
-        // Render Table Rows Based on Filters & Search Query
-        function renderTable() {
-            const tbody = document.getElementById('accountTableBody');
-            const emptyState = document.getElementById('emptyState');
-            tbody.innerHTML = '';
-
-            // Filter logic
-            let filtered = parsedAccounts.filter(acc => {
-                if (currentFilter === 'banned') return acc.isBanned;
-                if (currentFilter === 'active') return !acc.isBanned;
-                return true;
-            });
-
-            // Search logic
-            if (searchQuery) {
-                filtered = filtered.filter(acc => acc.raw.toLowerCase().includes(searchQuery));
-            }
-
-            // Update footer count
-            document.getElementById('showingCount').innerText = `Hiển thị ${filtered.length} / ${parsedAccounts.length} tài khoản`;
-
-            if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            } else {
-                emptyState.classList.add('hidden');
-            }
-
-            // Render Rows
-            filtered.forEach((acc, idx) => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/80 transition-colors border-b border-slate-700/40";
-
-                const banBadge = acc.isBanned 
-                    ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-circle text-[8px]"></i> Yes (Khóa)</span>`
-                    : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-circle text-[8px]"></i> No (Sạch)</span>`;
-
-                tr.innerHTML = `
-                    <td class="py-3 px-4 text-center text-slate-500 font-sans">${idx + 1}</td>
-                    <td class="py-3 px-4 font-semibold text-slate-200">
-                        ${escapeHtml(acc.id)}
-                    </td>
-                    <td class="py-3 px-4">
-                        ${banBadge}
-                    </td>
-                    <td class="py-3 px-4 text-slate-300">
-                        ${acc.pass ? `<div><span class="text-slate-500">Pass:</span> ${escapeHtml(acc.pass)}</div>` : ''}
-                        ${acc.twoFA ? `<div class="text-xs text-brand-400"><span class="text-slate-500">2FA:</span> ${escapeHtml(acc.twoFA)}</div>` : ''}
-                        ${!acc.pass && !acc.twoFA ? `<span class="text-slate-600 font-sans italic">Xem log đầy đủ</span>` : ''}
-                    </td>
-                    <td class="py-3 px-4 text-slate-300">
-                        ${acc.mail ? `<div>${escapeHtml(acc.mail)}</div>` : `<span class="text-slate-600 font-sans italic">-</span>`}
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <button onclick="copyToClipboard('${escapeJsString(acc.raw)}')" 
-                                title="Sao chép toàn bộ dòng này"
-                                class="p-2 text-slate-400 hover:text-brand-400 hover:bg-slate-700/60 rounded-lg transition">
-                            <i class="fa-regular fa-copy text-sm"></i>
-                        </button>
-                    </td>
-                `;
-
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Utility: Copy to Clipboard safely
-        function copyToClipboard(text) {
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => showToast());
-            } else {
-                // Fallback for non-https or older browser environments
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    showToast();
-                } catch (err) {
-                    console.error('Không thể sao chép: ', err);
+                let parts = trimmed.split(/[|:\t]/);
+                if (parts.length === 1) {
+                    parts = trimmed.split(/\s+/);
                 }
-                document.body.removeChild(textArea);
+
+                const user = parts[0] ? parts[0].trim() : '';
+                const pass = parts[1] ? parts[1].trim() : '';
+
+                if (user) {
+                    accounts.push({ user, pass });
+                }
+            });
+
+            if (accounts.length > 0) {
+                currentIndex = 0;
+            } else {
+                currentIndex = -1;
+            }
+
+            renderAccount();
+            importModal.classList.add('hidden');
+            if (accounts.length > 0) {
+                showToast('Đã tải dữ liệu', `Tìm thấy ${accounts.length} tài khoản`, 'success');
             }
         }
 
-        // UI Toast Notification
-        function showToast(message = "Đã sao chép vào bộ nhớ tạm!") {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-message').innerText = message;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
+        // Render current selected account
+        function renderAccount() {
+            const total = accounts.length;
+            totalBadge.querySelector('span').textContent = total;
 
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2500);
+            if (total === 0 || currentIndex < 0 || currentIndex >= total) {
+                emptyOverlay.classList.remove('hidden');
+                displayUser.value = "Chưa có dữ liệu";
+                displayPass.value = "Chưa có dữ liệu";
+                sttBadge.textContent = "#0";
+                sttInput.value = "";
+                
+                btnPrev.disabled = true;
+                btnNext.disabled = true;
+                btnCopyUser.disabled = true;
+                btnCopyPass.disabled = true;
+                btnCopyBoth.disabled = true;
+                return;
+            }
+
+            emptyOverlay.classList.add('hidden');
+
+            const current = accounts[currentIndex];
+            const sttNumber = currentIndex + 1;
+
+            displayUser.value = current.user;
+            displayPass.value = current.pass || "(Không có mật khẩu)";
+
+            sttBadge.textContent = `#${sttNumber}`;
+            sttInput.value = sttNumber;
+
+            btnPrev.disabled = currentIndex === 0;
+            btnNext.disabled = currentIndex === total - 1;
+
+            btnCopyUser.disabled = false;
+            btnCopyPass.disabled = !current.pass;
+            btnCopyBoth.disabled = !current.pass;
+
+            // Trigger visual pulse
+            accountCard.classList.remove('card-pop');
+            void accountCard.offsetWidth; // Force reflow
+            accountCard.classList.add('card-pop');
         }
 
-        // Helper string escapes
-        function escapeHtml(str) {
-            return String(str)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+        // Jump to target STT
+        function jumpToSTT(e) {
+            e.preventDefault();
+            const val = parseInt(sttInput.value, 10);
+
+            if (isNaN(val) || val < 1) {
+                showToast('Cảnh báo', 'Vui lòng nhập số thứ tự lớn hơn 0!', 'warning');
+                return;
+            }
+
+            if (accounts.length === 0) {
+                showToast('Thông báo', 'Danh sách tài khoản đang trống!', 'warning');
+                return;
+            }
+
+            if (val > accounts.length) {
+                showToast('Không tồn tại', `Chỉ có tối đa ${accounts.length} tài khoản!`, 'error');
+                return;
+            }
+
+            currentIndex = val - 1;
+            renderAccount();
+            showToast('Đã chuyển', `Đang hiển thị tài khoản STT #${val}`, 'info');
         }
 
-        function escapeJsString(str) {
-            return String(str)
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/"/g, '\\"')
-                .replace(/\n/g, '\\n');
+        // Prev/Next Navigation
+        function prevAccount() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                renderAccount();
+            }
         }
+
+        function nextAccount() {
+            if (currentIndex < accounts.length - 1) {
+                currentIndex++;
+                renderAccount();
+            }
+        }
+
+        // Copy Handler
+        function copyCurrent(type) {
+            if (currentIndex < 0 || currentIndex >= accounts.length) return;
+
+            const current = accounts[currentIndex];
+            let textToCopy = "";
+            let label = "";
+
+            if (type === 'user') {
+                textToCopy = current.user;
+                label = `Tài khoản STT #${currentIndex + 1}`;
+            } else if (type === 'pass') {
+                textToCopy = current.pass;
+                label = `Mật khẩu STT #${currentIndex + 1}`;
+            } else if (type === 'both') {
+                textToCopy = `${current.user}|${current.pass}`;
+                label = `Cả Acc & Pass STT #${currentIndex + 1}`;
+            }
+
+            if (!textToCopy) return;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToast('Đã sao chép', `${label}`, 'success');
+                }).catch(() => fallbackCopy(textToCopy, label));
+            } else {
+                fallbackCopy(textToCopy, label);
+            }
+        }
+
+        function fallbackCopy(text, label) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Đã sao chép', `${label}`, 'success');
+            } catch (err) {
+                showToast('Lỗi', 'Không thể sao chép!', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Clear All
+        function clearData() {
+            rawInput.value = '';
+            fileInput.value = '';
+            accounts = [];
+            currentIndex = -1;
+            renderAccount();
+            importModal.classList.add('hidden');
+            showToast('Đã xóa', 'Dữ liệu đã được dọn sạch', 'info');
+        }
+
+        // Toast Notification Manager
+        let toastTimeout;
+        function showToast(title, message, type = 'success') {
+            clearTimeout(toastTimeout);
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMsg').textContent = message;
+
+            const toastIcon = document.getElementById('toastIcon');
+            if (type === 'success') {
+                toastIcon.className = 'w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0';
+                toastIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else if (type === 'error' || type === 'warning') {
+                toastIcon.className = 'w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm shrink-0';
+                toastIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else {
+                toastIcon.className = 'w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm shrink-0';
+                toastIcon.innerHTML = '<i class="fa-solid fa-info"></i>';
+            }
+
+            toast.classList.remove('hidden');
+
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2000);
+        }
+
+        // Keyboard Shortcuts (Arrow Left / Right to Navigate)
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return; // Don't trigger if user is typing
+            }
+
+            if (e.key === 'ArrowLeft') {
+                prevAccount();
+            } else if (e.key === 'ArrowRight') {
+                nextAccount();
+            }
+        });
     </script>
 </body>
 </html>
