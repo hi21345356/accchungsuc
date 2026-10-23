@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Tra Cứu & Lọc Tài Khoản (Account Log Inspector)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-900 text-slate-100">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out bg-emerald-600 text-white px-5 py-3 rounded-lg shadow-xl flex items-center gap-3 z-50 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-lg"></i>
+        <span id="toast-message" class="font-medium text-sm">Đã sao chép vào bộ nhớ tạm!</span>
+    </div>
+
+    <!-- Header Section -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-brand-600/20 text-brand-500 rounded-xl border border-brand-500/30">
+                    <i class="fa-solid fa-users-gear text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                        Account Log Filter & Search
+                    </h1>
+                    <p class="text-xs text-slate-400">Công cụ kiểm tra, tra cứu và lọc dữ liệu log tài khoản nhanh chóng</p>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="flex items-center gap-2">
+                <button onclick="clearData()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-trash-can"></i> Xóa dữ liệu
+                </button>
+                <button onclick="loadSampleData()" class="px-3 py-1.5 text-xs font-medium bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 rounded-lg transition border border-brand-500/30 flex items-center gap-2">
+                    <i class="fa-solid fa-vial"></i> Nạp dữ liệu mẫu
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Input Section -->
+        <section class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 shadow-lg backdrop-blur">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+                <label for="logInput" class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-paste text-brand-500"></i> Dán nội dung Log Tài Khoản vào đây:
+                </label>
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <!-- File Upload Button -->
+                    <label class="cursor-pointer text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-import"></i> Nhập từ File (.txt)
+                        <input type="file" id="fileInput" accept=".txt,.log" class="hidden" onchange="handleFileUpload(event)">
+                    </label>
+                    <button onclick="parseLogs()" class="text-xs bg-brand-600 hover:bg-brand-500 text-white font-semibold px-4 py-1.5 rounded-lg transition shadow-lg shadow-brand-600/20 flex items-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> Xử lý Log
+                    </button>
+                </div>
+            </div>
+
+            <textarea 
+                id="logInput" 
+                rows="5" 
+                class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition resize-y placeholder-slate-600"
+                placeholder="Dán dữ liệu log dạng: ID: 9581-FINAL | Pass: ... | Ban: No | Mail: ..."></textarea>
+        </section>
+
+        <!-- Stats Overview Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
+                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
+                    <i class="fa-solid fa-list-check text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Tổng số Tài khoản</span>
+                    <h3 id="statTotal" class="text-2xl font-bold text-slate-100">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
+                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <i class="fa-solid fa-user-check text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Hoạt động (Active)</span>
+                    <h3 id="statActive" class="text-2xl font-bold text-emerald-400">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
+                <div class="p-3 bg-rose-500/10 text-rose-400 rounded-lg">
+                    <i class="fa-solid fa-user-slash text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Bị Khóa (Banned)</span>
+                    <h3 id="statBanned" class="text-2xl font-bold text-rose-400">0</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search & Quick Filters Bar -->
+        <section class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- Filter Tabs -->
+            <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/60 w-full md:w-auto">
+                <button onclick="setFilter('all')" id="btnFilterAll" class="filter-btn active-tab px-4 py-2 text-xs font-semibold rounded-lg transition flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-globe"></i> Tất cả
+                </button>
+                <button onclick="setFilter('banned')" id="btnFilterBanned" class="filter-btn text-slate-400 hover:text-slate-200 px-4 py-2 text-xs font-semibold rounded-lg transition flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-ban text-rose-400"></i> Bị BAN (Ban: Yes)
+                </button>
+                <button onclick="setFilter('active')" id="btnFilterActive" class="filter-btn text-slate-400 hover:text-slate-200 px-4 py-2 text-xs font-semibold rounded-lg transition flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-400"></i> Hoạt động (Ban: No)
+                </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    oninput="handleSearch()"
+                    placeholder="Tìm theo Mã ID, Tên, Mail, Keyword..." 
+                    class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-10 pr-9 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition">
+                <button onclick="clearSearch()" id="btnClearSearch" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Results Table Section -->
+        <section class="flex-1 bg-slate-800/60 border border-slate-700/60 rounded-2xl shadow-lg overflow-hidden flex flex-col">
+            <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-900/80 border-b border-slate-700/80 sticky top-0 z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        <tr>
+                            <th class="py-3 px-4 w-12 text-center">STT</th>
+                            <th class="py-3 px-4">Tài Khoản / ID</th>
+                            <th class="py-3 px-4">Trạng Thái BAN</th>
+                            <th class="py-3 px-4">Mật khẩu / 2FA</th>
+                            <th class="py-3 px-4">Email / Thông tin thêm</th>
+                            <th class="py-3 px-4 text-center w-28">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accountTableBody" class="divide-y divide-slate-700/50 text-xs font-mono text-slate-300">
+                        <!-- Table rows will be dynamically generated -->
+                    </tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="py-16 text-center flex flex-col items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-folder-open text-4xl mb-3 opacity-40"></i>
+                    <p class="text-sm font-medium">Chưa có dữ liệu tài khoản nào.</p>
+                    <p class="text-xs text-slate-600 mt-1">Dán log vào ô phía trên hoặc chọn "Nạp dữ liệu mẫu".</p>
+                </div>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="bg-slate-900/60 border-t border-slate-700/60 px-4 py-3 flex justify-between items-center text-xs text-slate-400">
+                <span id="showingCount">Hiển thị 0 / 0 tài khoản</span>
+                <span class="text-slate-500 italic">Mẹo: Click nút sao chép để lấy nội dung dòng</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Style overrides for custom tab toggle -->
+    <style>
+        .active-tab {
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3);
+        }
+    </style>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global State Variables
+        let parsedAccounts = [];
+        let currentFilter = 'all'; // 'all', 'banned', 'active'
+        let searchQuery = '';
+
+        // Sample Data for quick testing
+        const sampleLogs = `Mã: 9581-FINAL | ID: User_Alpha | Pass: Pass123! | 2FA: JBSWY3DPEHPK3PXP | Ban: No | Mail: alpha@gmail.com
+Mã: 9582-FINAL | ID: User_Beta | Pass: BetaPass456 | 2FA: K4SWY3DPEHPK3PXP | Ban: Yes | Mail: beta@outlook.com | Reason: Spam
+Mã: 9583-FINAL | ID: User_Gamma | Pass: GammaPass789 | 2FA: L5SWY3DPEHPK3PXP | Ban: No | Mail: gamma@yahoo.com
+Mã: 9584-FINAL | ID: User_Delta | Pass: DeltaPass321 | 2FA: M6SWY3DPEHPK3PXP | Ban: Yes | Mail: delta@gmail.com
+Mã: 9585-FINAL | ID: User_Epsilon | Pass: EpsPass654 | 2FA: N7SWY3DPEHPK3PXP | Ban: No | Mail: epsilon@domain.com`;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSampleData();
+        });
+
+        // Load sample data into textarea and parse
+        function loadSampleData() {
+            document.getElementById('logInput').value = sampleLogs;
+            parseLogs();
+        }
+
+        // Clear input and state
+        function clearData() {
+            document.getElementById('logInput').value = '';
+            parsedAccounts = [];
+            renderTable();
+            updateStats();
+        }
+
+        // Handle file import (.txt)
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('logInput').value = e.target.result;
+                parseLogs();
+            };
+            reader.readAsText(file);
+        }
+
+        // Parse Raw Text into Structured Data
+        function parseLogs() {
+            const text = document.getElementById('logInput').value;
+            const lines = text.split('\n');
+            parsedAccounts = [];
+
+            lines.forEach((line, index) => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                // Extract Ban status carefully
+                const isBanned = /ban:\s*yes/i.test(trimmed);
+                
+                // Parse Key-Value Pairs if possible, or keep raw string
+                const idMatch = trimmed.match(/(?:ID|Mã|Acc|Account|User)[:\s]*([^\s|]+)/i);
+                const passMatch = trimmed.match(/(?:Pass|Password|Mật khẩu)[:\s]*([^\s|]+)/i);
+                const faMatch = trimmed.match(/(?:2FA|TwoFA|Code)[:\s]*([^\s|]+)/i);
+                const mailMatch = trimmed.match(/(?:Mail|Email)[:\s]*([^\s|]+)/i);
+
+                parsedAccounts.push({
+                    index: index + 1,
+                    raw: trimmed,
+                    isBanned: isBanned,
+                    id: idMatch ? idMatch[1] : (trimmed.split('|')[0] || `Line ${index + 1}`),
+                    pass: passMatch ? passMatch[1] : '',
+                    twoFA: faMatch ? faMatch[1] : '',
+                    mail: mailMatch ? mailMatch[1] : ''
+                });
+            });
+
+            updateStats();
+            renderTable();
+        }
+
+        // Calculate & Update Stats Overview
+        function updateStats() {
+            const total = parsedAccounts.length;
+            const banned = parsedAccounts.filter(a => a.isBanned).length;
+            const active = total - banned;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statBanned').innerText = banned;
+            document.getElementById('statActive').innerText = active;
+        }
+
+        // Filter Handlers
+        function setFilter(type) {
+            currentFilter = type;
+            
+            // Update Tab UI Styles
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active-tab'));
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.add('text-slate-400'));
+
+            if (type === 'all') {
+                document.getElementById('btnFilterAll').classList.add('active-tab');
+            } else if (type === 'banned') {
+                document.getElementById('btnFilterBanned').classList.add('active-tab');
+            } else if (type === 'active') {
+                document.getElementById('btnFilterActive').classList.add('active-tab');
+            }
+
+            renderTable();
+        }
+
+        // Search Input Handler
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+            const clearBtn = document.getElementById('btnClearSearch');
+            
+            if (searchQuery) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            renderTable();
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            handleSearch();
+        }
+
+        // Render Table Rows Based on Filters & Search Query
+        function renderTable() {
+            const tbody = document.getElementById('accountTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            // Filter logic
+            let filtered = parsedAccounts.filter(acc => {
+                if (currentFilter === 'banned') return acc.isBanned;
+                if (currentFilter === 'active') return !acc.isBanned;
+                return true;
+            });
+
+            // Search logic
+            if (searchQuery) {
+                filtered = filtered.filter(acc => acc.raw.toLowerCase().includes(searchQuery));
+            }
+
+            // Update footer count
+            document.getElementById('showingCount').innerText = `Hiển thị ${filtered.length} / ${parsedAccounts.length} tài khoản`;
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Render Rows
+            filtered.forEach((acc, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/80 transition-colors border-b border-slate-700/40";
+
+                const banBadge = acc.isBanned 
+                    ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-circle text-[8px]"></i> Yes (Khóa)</span>`
+                    : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-circle text-[8px]"></i> No (Sạch)</span>`;
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-center text-slate-500 font-sans">${idx + 1}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-200">
+                        ${escapeHtml(acc.id)}
+                    </td>
+                    <td class="py-3 px-4">
+                        ${banBadge}
+                    </td>
+                    <td class="py-3 px-4 text-slate-300">
+                        ${acc.pass ? `<div><span class="text-slate-500">Pass:</span> ${escapeHtml(acc.pass)}</div>` : ''}
+                        ${acc.twoFA ? `<div class="text-xs text-brand-400"><span class="text-slate-500">2FA:</span> ${escapeHtml(acc.twoFA)}</div>` : ''}
+                        ${!acc.pass && !acc.twoFA ? `<span class="text-slate-600 font-sans italic">Xem log đầy đủ</span>` : ''}
+                    </td>
+                    <td class="py-3 px-4 text-slate-300">
+                        ${acc.mail ? `<div>${escapeHtml(acc.mail)}</div>` : `<span class="text-slate-600 font-sans italic">-</span>`}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <button onclick="copyToClipboard('${escapeJsString(acc.raw)}')" 
+                                title="Sao chép toàn bộ dòng này"
+                                class="p-2 text-slate-400 hover:text-brand-400 hover:bg-slate-700/60 rounded-lg transition">
+                            <i class="fa-regular fa-copy text-sm"></i>
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Utility: Copy to Clipboard safely
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => showToast());
+            } else {
+                // Fallback for non-https or older browser environments
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast();
+                } catch (err) {
+                    console.error('Không thể sao chép: ', err);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        // UI Toast Notification
+        function showToast(message = "Đã sao chép vào bộ nhớ tạm!") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // Helper string escapes
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function escapeJsString(str) {
+            return String(str)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n');
+        }
+    </script>
+</body>
+</html>
