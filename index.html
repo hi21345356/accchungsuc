@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Tìm Tài Khoản</title>
+    <title>Trình Tìm Tài Khoản Theo ID</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -36,10 +36,11 @@
         .title { color: #38bdf8; font-size: 1.2rem; font-weight: 600; }
         .badge {
             background-color: #334155;
-            color: #94a3b8;
-            padding: 4px 10px;
+            color: #38bdf8;
+            padding: 6px 12px;
             border-radius: 12px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            font-weight: bold;
         }
         .search-box {
             display: flex;
@@ -53,16 +54,17 @@
             border-radius: 8px;
             color: #fff;
             padding: 10px 14px;
-            font-size: 1rem;
+            font-size: 1.1rem;
             outline: none;
             text-align: center;
+            font-weight: 600;
         }
         .search-input:focus { border-color: #38bdf8; }
         .btn {
             background-color: #0284c7;
             color: white;
             border: none;
-            padding: 10px 16px;
+            padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
@@ -79,21 +81,22 @@
         .field-label { font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
         .field-value {
             font-family: monospace;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             color: #f1f5f9;
             word-break: break-all;
             background: #1e293b;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 6px;
         }
         .copy-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .btn-copy {
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 6px;
             color: white;
             font-weight: 600;
             cursor: pointer;
+            font-size: 0.95rem;
         }
         .btn-user { background-color: #3b82f6; }
         .btn-pass { background-color: #10b981; }
@@ -103,7 +106,7 @@
 
         .status-msg {
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #e2e8f0;
             padding: 10px;
         }
@@ -126,15 +129,15 @@
     <div class="card">
         <div class="header">
             <span class="title">Tài Khoản Chi Tiết</span>
-            <span class="badge" id="accIndex">STT: 0/0</span>
+            <span class="badge" id="accIdBadge">MÃ ACC: ---</span>
         </div>
 
         <div class="search-box">
-            <input type="number" id="gotoStt" class="search-input" placeholder="Nhập STT (vd: 9999)..." min="1">
-            <button class="btn" onclick="jumpToStt()">Tìm</button>
+            <input type="text" id="gotoId" class="search-input" placeholder="Nhập mã ACC (vd: 9051, 10580)...">
+            <button class="btn" onclick="searchById()">Tìm</button>
         </div>
 
-        <div id="loadingArea" class="status-msg">Đang tự động tải dữ liệu từ acc.txt...</div>
+        <div id="loadingArea" class="status-msg">Đang tự động nạp dữ liệu từ acc.txt...</div>
 
         <div id="contentArea" class="hidden">
             <div class="display-area">
@@ -168,7 +171,6 @@
     let accounts = [];
     let currentIndex = 0;
 
-    // Tự động tải file acc.txt cùng thư mục khi trang chạy
     window.addEventListener('DOMContentLoaded', () => {
         fetch('acc.txt')
             .then(response => {
@@ -180,7 +182,7 @@
             })
             .catch(err => {
                 document.getElementById('loadingArea').innerHTML = `
-                    <span style="color:#ef4444">Không tìm thấy file <b>acc.txt</b> tự động.</span><br><br>
+                    <span style="color:#ef4444">Không tìm thấy file <b>acc.txt</b>.</span><br><br>
                     <input type="file" id="manualFile" accept=".txt" onchange="loadManualFile(event)">
                 `;
             });
@@ -202,14 +204,38 @@
             const trimmed = line.trim();
             if (!trimmed) return;
 
+            // Lấy ID/số ở đầu dòng (Ví dụ: 10580 từ '10580-FINAL = oliverkahn7777')
+            let accId = '';
+            const matchId = trimmed.match(/^(\d+)/);
+            if (matchId) {
+                accId = matchId[1];
+            }
+
+            // Tách User và Pass theo dấu | hoặc : hoặc khoảng trắng/tab
             let parts = trimmed.split(/[|:\t]/);
             if (parts.length === 1) parts = trimmed.split(/\s+/);
 
-            const user = parts[0] ? parts[0].trim() : '';
-            const pass = parts[1] ? parts[1].trim() : '';
+            let rawUser = parts[0] ? parts[0].trim() : '';
+            let pass = parts[1] ? parts[1].trim() : '';
 
-            if (user) {
-                accounts.push({ user, pass });
+            // Lọc bỏ phần số và dấu = thừa ở tài khoản (vd: "10580-FINAL = oliverkahn7777" -> "oliverkahn7777")
+            let cleanUser = rawUser;
+            if (cleanUser.includes('=')) {
+                cleanUser = cleanUser.split('=').pop().trim();
+            } else if (cleanUser.includes('-')) {
+                // Nếu dạng 10580-oliverkahn7777
+                const subParts = cleanUser.split('-');
+                if (subParts.length > 1 && !isNaN(subParts[0])) {
+                    cleanUser = subParts.slice(1).join('-').trim();
+                }
+            }
+
+            if (cleanUser || rawUser) {
+                accounts.push({
+                    id: accId || (accounts.length + 1).toString(),
+                    user: cleanUser || rawUser,
+                    pass: pass
+                });
             }
         });
 
@@ -218,7 +244,7 @@
             document.getElementById('contentArea').classList.remove('hidden');
             showAccount(0);
         } else {
-            document.getElementById('loadingArea').innerHTML = 'File acc.txt rỗng hoặc sai định dạng!';
+            document.getElementById('loadingArea').innerHTML = 'File acc.txt rỗng hoặc không đúng cấu trúc!';
         }
     }
 
@@ -232,14 +258,27 @@
 
         document.getElementById('userVal').textContent = acc.user || '(Không có)';
         document.getElementById('passVal').textContent = acc.pass || '(Không có)';
-        document.getElementById('accIndex').textContent = `STT: ${currentIndex + 1}/${accounts.length}`;
-        document.getElementById('gotoStt').value = currentIndex + 1;
+        document.getElementById('accIdBadge').textContent = `ACC ID: ${acc.id}`;
+        document.getElementById('gotoId').value = acc.id;
     }
 
-    function jumpToStt() {
-        const stt = parseInt(document.getElementById('gotoStt').value);
-        if (!isNaN(stt) && stt >= 1) {
-            showAccount(stt - 1);
+    function searchById() {
+        const query = document.getElementById('gotoId').value.trim();
+        if (!query) return;
+
+        // Tìm kiếm chính xác theo mã ID số tài khoản
+        const foundIndex = accounts.findIndex(acc => acc.id === query);
+
+        if (foundIndex !== -1) {
+            showAccount(foundIndex);
+        } else {
+            // Nếu không tìm thấy ID chính xác, thử tìm tài khoản chứa từ khóa đó
+            const partialIndex = accounts.findIndex(acc => acc.id.includes(query) || acc.user.includes(query));
+            if (partialIndex !== -1) {
+                showAccount(partialIndex);
+            } else {
+                showToast('❌ Không tìm thấy mã ACC: ' + query);
+            }
         }
     }
 
@@ -257,16 +296,19 @@
         else if (type === 'both') textToCopy = `${acc.user}|${acc.pass}`;
 
         navigator.clipboard.writeText(textToCopy).then(() => {
-            const toast = document.getElementById('toast');
-            toast.textContent = 'Đã sao chép: ' + textToCopy;
-            toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 1500);
+            showToast('Đã sao chép: ' + textToCopy);
         });
     }
 
-    // Nhấn Enter ở ô nhập để tìm luôn
-    document.getElementById('gotoStt').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') jumpToStt();
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1800);
+    }
+
+    document.getElementById('gotoId').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchById();
     });
 </script>
 
